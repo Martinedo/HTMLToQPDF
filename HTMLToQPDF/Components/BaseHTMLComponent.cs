@@ -1,6 +1,7 @@
 ﻿using HtmlAgilityPack;
 using HTMLQuestPDF.Extensions;
 using HTMLToQPDF.Components;
+using HTMLToQPDF.Utils;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 
@@ -35,7 +36,18 @@ namespace HTMLQuestPDF.Components
 
         protected virtual IContainer ApplyStyles(IContainer container)
         {
-            return args.ContainerStyles.TryGetValue(node.Name.ToLower(), out var style) ? style(container) : container;
+            // Apply tag-based styles first
+            container = args.ContainerStyles.TryGetValue(node.Name.ToLower(), out var style) ? style(container) : container;
+            
+            // Apply inline styles (they override tag-based styles)
+            var styleAttribute = node.GetAttributeValue("style", string.Empty);
+            if (!string.IsNullOrWhiteSpace(styleAttribute))
+            {
+                var cssProperties = CSSParser.ParseInlineStyle(styleAttribute);
+                container = CSSContainerMapper.ApplyInlineStyles(container, cssProperties);
+            }
+            
+            return container;
         }
 
         protected virtual void ComposeSingle(IContainer container)
